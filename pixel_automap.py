@@ -183,6 +183,7 @@ all_off()
 time.sleep(1)
 cv2.namedWindow("Camera1", flags=cv2.WINDOW_NORMAL)
 cv2.resizeWindow("Camera1", 800, 600);
+handled_pixels = 0
 for unum, universe in enumerate(universes):
 	for index in range(0,universe.pixelcount):
 		attempts = 1
@@ -272,7 +273,7 @@ for unum, universe in enumerate(universes):
 				if len(cnts)== 1:
 					attempts = 0
 					print("Pixel " + str(index) + " coordinates: [" + str(x) + "," + str(y) + "]")
-					vsource.outputpoints[unum*170+index] = [unum*170+index,cX,cY]
+					vsource.outputpoints[handled_pixels+index] = [handled_pixels+index,cX,cY]
 				else:
 					print("too many bright spots, trying again!")
 					attempts = attempts + 1
@@ -285,17 +286,18 @@ for unum, universe in enumerate(universes):
 				print('too many points attempts - click on the pixel to locate or click outside of polygon to skip') 
 				playsound('alert.wav')
 				cv2.imshow("Camera1", image)
-				cv2.setMouseCallback("Camera1",on_mouse,[unum*170+index,vsource])
+				cv2.setMouseCallback("Camera1",on_mouse,[handled_pixels+index,vsource])
 				done = 0
 				while done == 0:
 					cv2.waitKey(50)
-					if vsource.outputpoints[unum*170+index] != [-1,0,0]:
+					if vsource.outputpoints[handled_pixels+index] != [-1,0,0]:
 						done = 1
 					else:
 						done = 0
 				attempts = 0
 		with open(outfilename.replace('.json','.txt'), 'a') as outfile:
-			outfile.write(str(unum*170+index) + ',' + str(vsource.outputpoints[unum*170+index][1]) + ',' + str(vsource.outputpoints[unum*170+index][2]) + "\n")
+			outfile.write(str(handled_pixels+index) + ',' + str(vsource.outputpoints[handled_pixels+index][1]) + ',' + str(vsource.outputpoints[handled_pixels+index][2]) + "\n")
+	handled_pixels += universe.pixelcount
 all_off()
 
 with open(outfilename, 'w') as outfile:
