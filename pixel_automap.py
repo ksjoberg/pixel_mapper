@@ -1,3 +1,5 @@
+from queue import Empty, Queue
+from typing import Callable
 from imutils import contours, grab_contours
 from skimage import metrics, measure
 import numpy as np
@@ -65,11 +67,28 @@ def updateFrame(videosource):
 		videosource.retval, videosource.currentFrame = videosource.source.read()
 		cv2.waitKey(1)
 
+func_queue = Queue()
+def display_refresh(q: Queue):
+	while(True):
+		try:
+			current_display_func = q.get_nowait()
+		except Empty:
+			pass
+		if (callable(current_display_func)):
+			current_display_func()
+		time.sleep(0.1)
+
+def display_update(func: Callable[[], None]):
+	func_queue.put(func)
+
 #Starts continuosly updating the images in a thread - if we don't do this, old images get stuck in the video buffer
 _thread.start_new_thread(updateFrame,(vsource,))
 while vsource.retval == False:
 	print("waiting for video")
 	time.sleep(1)
+
+_thread.start_new_thread(display_refresh,(func_queue,))
+
 
 class PolygonDrawer(object):
 	def __init__(self, window_name,videosource):
@@ -157,8 +176,8 @@ def all_on():
 
 #Polygon masking - turn on all pixels and allow the user to draw a polygon around them to prevent
 #detecting light sources outside the area of interest
-all_on()  #turn all pixels on
-time.sleep(1)
+display_update(all_on) #turn all pixels on
+time.sleep(0.6)
 pd = PolygonDrawer("Polygon1",vsource)
 image = pd.run()
 print("Polygon = %s" % vsource.polygon)
@@ -179,7 +198,7 @@ def on_mouse( event, x, y, buttons, mystuff):
 			videosource.outputpoints[index] = [index,0,0]
 			print("Adding point #%d with position(%d,%d)" % (index,0,0))
 
-all_off()
+display_update(all_off)
 time.sleep(1)
 cv2.namedWindow("Camera1", flags=cv2.WINDOW_NORMAL)
 cv2.resizeWindow("Camera1", 800, 600);
@@ -189,14 +208,14 @@ for unum, universe in enumerate(universes):
 		attempts = 1
 		while attempts >0:
 			pixelout = {}
-			all_off()
+			display_update(all_off)
 			time.sleep(0.1)
 			image_off = vsource.currentFrame
 			print("image_off")
 			cv2.imshow("Camera1",image_off)
 			cv2.resizeWindow("Camera1", 800, 600);
 			cv2.waitKey(500)
-			universe.source.send_data(data=[0,0,0]*(index) + onval + [0,0,0]*(universe.pixelcount-index-1))
+			display_update(lambda: universe.source.send_data(data=[0,0,0]*(index) + onval + [0,0,0]*(universe.pixelcount-index-1)))
 			time.sleep(0.7)
 			image = vsource.currentFrame
 			print("image")
